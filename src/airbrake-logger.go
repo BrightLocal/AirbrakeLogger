@@ -1,16 +1,13 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/json"
 	"flag"
 	"github.com/kr/beanstalk"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
+	"sender"
+	"server"
 	"time"
 )
 
@@ -23,17 +20,17 @@ var (
 	queueLength      = flag.Int("queue-len", 10000, "Length of message queue")
 	sleepDelay       time.Duration
 	messageQueue     chan []byte
-	tcpServer        *server
+	messageSender    *sender.Sender
+	tcpServer        *server.Server
 )
 
 func init() {
 	flag.Parse()
 	sleepDelay = 600 / time.Duration(*rateLimit) * time.Second / 10 // One tenth of second resolution
 	messageQueue = make(chan []byte, *queueLength)
-	go sender(messageQueue)
+	messageSender = sender.New(*url, messageQueue)
 	if *tcpServerAddress != "" {
-		tcpServer = &server{}
-		tcpServer.runListener(*tcpServerAddress)
+		tcpServer = server.New(*tcpServerAddress, messageQueue)
 	}
 }
 
@@ -64,31 +61,6 @@ func main() {
 	}
 }
 
-func sender(c chan []byte) {
-	for {
-		send(<-c)
-	}
-}
-
-func send(xml []byte) {
-	var msg string
-	err := json.Unmarshal(xml, &msg)
-	if err != nil {
-		log.Printf("%s", err)
-		return
-	}
-	resp, err := http.Post(*url, "text/xml", bytes.NewBuffer([]byte(msg)))
-	if err != nil {
-		log.Printf("Error sending post request: %s", err)
-	} else {
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			log.Printf("Message not accepted: %s", resp.Status)
-			return
-		}
-	}
-}
-
 func queueConnect() *beanstalk.Conn {
 	for {
 		log.Print("Connecting to queue server...")
@@ -101,35 +73,4 @@ func queueConnect() *beanstalk.Conn {
 		log.Printf("Connected")
 		return beanstalk
 	}
-}
-
-type server struct {
-}
-
-func (s *server) runListener(address string) error {
-	socket, err := net.Listen("tcp", address)
-	if err != nil {
-		return err
-	}
-	go s.listener(socket)
-	return nil
-}
-
-func (s *server) listener(socket net.Listener) {
-	for {
-		connection, err := socket.Accept()
-		if err != nil {
-			log.Print(err)
-		}
-		go s.handler(connection)
-	}
-}
-
-func (s *server) handler(connection net.Conn) {
-	defer connection.Close()
-	msg, err := bufio.NewReader(connection).ReadBytes(0)
-	if err != nil {
-		log.Print(err)
-	}
-	messageQueue <- msg[:len(msg)-1]
 }
