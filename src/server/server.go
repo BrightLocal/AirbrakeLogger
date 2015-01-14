@@ -39,9 +39,11 @@ func (s *Server) listener(socket net.Listener) {
 
 func (s *Server) handler(connection net.Conn) {
 	defer connection.Close()
-	msg, err := bufio.NewReader(connection).ReadBytes(0)
-	if err != nil {
-		log.Print(err)
+	for {
+		msg, err := bufio.NewReader(connection).ReadBytes(0)
+		if err != nil {
+			return
+		}
+		s.messageQueue <- msg[:len(msg)-1]
 	}
-	s.messageQueue <- msg[:len(msg)-1]
 }
