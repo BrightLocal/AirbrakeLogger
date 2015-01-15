@@ -50,6 +50,10 @@ func (q *Queue) run() {
 			if len(q.messageQueue) < cap(q.messageQueue) {
 				q.messageQueue <- body
 			}
+		} else if err.Error() != "reserve-with-timeout: timeout" {
+			log.Printf("Reconnecting to queue server due to %v", err)
+			Queue.Close()
+			Queue = q.connect()
 		}
 	}
 }
