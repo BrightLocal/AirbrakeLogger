@@ -5,17 +5,20 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 )
 
 type Sender struct {
 	url          string
 	messageQueue chan []byte
+	delay        time.Duration
 }
 
-func New(url string, messageQueue chan []byte) *Sender {
+func New(url string, rate int, messageQueue chan []byte) *Sender {
 	s := &Sender{
 		url,
 		messageQueue,
+		600 / time.Duration(rate) * time.Second / 10, // One tenth of second resolution
 	}
 	go s.sender()
 	return s
@@ -24,6 +27,7 @@ func New(url string, messageQueue chan []byte) *Sender {
 func (s *Sender) sender() {
 	for {
 		s.send(<-s.messageQueue)
+		time.Sleep(s.delay)
 	}
 }
 

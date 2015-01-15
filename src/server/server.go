@@ -44,6 +44,9 @@ func (s *Server) handler(connection net.Conn) {
 		if err != nil {
 			return
 		}
-		s.messageQueue <- msg[:len(msg)-1]
+		// Silently discard messages if chan is full
+		if len(s.messageQueue) < cap(s.messageQueue) {
+			s.messageQueue <- msg[:len(msg)-1]
+		}
 	}
 }
