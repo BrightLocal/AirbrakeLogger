@@ -53,6 +53,7 @@ func (q *Queue) run() {
 		} else if err.Error() != "reserve-with-timeout: timeout" {
 			log.Printf("Reconnecting to queue server due to %v", err)
 			Queue.Close()
+			time.Sleep(5 * time.Second)
 			Queue = q.connect()
 		}
 	}
