@@ -8,7 +8,6 @@ import (
 	"queue"
 	"sender"
 	"server"
-	"time"
 )
 
 var (
@@ -21,7 +20,6 @@ var (
 )
 
 var (
-	sleepDelay      time.Duration
 	messageQueue    chan []byte
 	messageSender   *sender.Sender
 	tcpServer       *server.Server
@@ -45,13 +43,6 @@ func init() {
 func main() {
 	var osSignalsChannel chan os.Signal = make(chan os.Signal)
 	signal.Notify(osSignalsChannel, os.Interrupt, os.Kill)
-	for {
-		select {
-		case <-osSignalsChannel:
-			log.Print("Exiting")
-			return
-		default:
-			time.Sleep(sleepDelay)
-		}
-	}
+	<-osSignalsChannel
+	log.Print("Exiting")
 }
