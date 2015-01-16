@@ -28,6 +28,9 @@ var (
 
 func init() {
 	flag.Parse()
+	if *queueServer == "" && *tcpServerAddress == "" {
+		log.Fatal("Use at least one messages source (use beanstalkd or listen flags)!")
+	}
 	messageQueue = make(chan []byte, *queueLength)
 	log.Printf("Queue length is %d", *queueLength)
 	messageSender = sender.New(*url, *rateLimit, messageQueue)
