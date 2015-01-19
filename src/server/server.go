@@ -19,7 +19,7 @@ func New(address string, messageQueue chan []byte) *Server {
 }
 
 func (s *Server) runListener(address string) error {
-	socket, err := net.Listen("tcp", address)
+	socket, err := net.Listen("tcp4", address)
 	if err != nil {
 		return err
 	}
