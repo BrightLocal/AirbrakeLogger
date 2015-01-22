@@ -24,14 +24,14 @@ func New(address, queueName string, messageQueue chan []byte) *Queue {
 
 func (q *Queue) connect() *beanstalk.Conn {
 	for {
-		beanstalk, err := beanstalk.Dial("tcp", q.address)
+		conn, err := beanstalk.Dial("tcp", q.address)
 		if err != nil {
 			log.Printf("Could not connect to queue server %s: %v", q.address, err)
 			time.Sleep(1 * time.Second)
 			continue
 		}
 		log.Printf("Connected to queue server at %s", q.address)
-		return beanstalk
+		return conn
 	}
 }
 
