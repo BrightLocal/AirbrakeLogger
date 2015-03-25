@@ -21,6 +21,7 @@ func New(address string, messageQueue chan []byte) *Server {
 func (s *Server) runListener(address string) error {
 	socket, err := net.Listen("tcp4", address)
 	if err != nil {
+		log.Fatalf("Error starting TCP server: %s", err)
 		return err
 	}
 	go s.listener(socket)
@@ -28,6 +29,7 @@ func (s *Server) runListener(address string) error {
 }
 
 func (s *Server) listener(socket net.Listener) {
+	log.Print("Starting TCP listener")
 	for {
 		connection, err := socket.Accept()
 		if err != nil {

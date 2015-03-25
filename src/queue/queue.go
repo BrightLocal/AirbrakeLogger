@@ -36,6 +36,7 @@ func (q *Queue) connect() *beanstalk.Conn {
 }
 
 func (q *Queue) run() {
+	log.Print("Starting beanstalkd queue watcher")
 	var Queue *beanstalk.Conn
 	Queue = q.connect()
 	defer Queue.Close()

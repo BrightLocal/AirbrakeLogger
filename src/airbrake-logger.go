@@ -19,28 +19,22 @@ var (
 	queueLength      = flag.Int("queue-len", 1000, "Length of message queue")
 )
 
-var (
-	messageQueue    chan []byte
-	messageSender   *sender.Sender
-	tcpServer       *server.Server
-	beanstalkClient *queue.Queue
-)
-
 func init() {
 	flag.Parse()
 	if *queueServer == "" && *tcpServerAddress == "" {
 		log.Fatal("Use at least one messages source (use beanstalkd or listen flags)!")
 	}
-	messageQueue = make(chan []byte, *queueLength)
-	log.Printf("Queue length is %d", *queueLength)
-	messageSender = sender.New(*url, *rateLimit, messageQueue)
+	messageQueue := make(chan []byte, *queueLength)
+	sender.New(*url, *rateLimit, messageQueue)
 	if *queueServer != "" {
-		beanstalkClient = queue.New(*queueServer, *queueName, messageQueue)
+		queue.New(*queueServer, *queueName, messageQueue)
 	}
 	if *tcpServerAddress != "" {
-		tcpServer = server.New(*tcpServerAddress, messageQueue)
+		server.New(*tcpServerAddress, messageQueue)
 		log.Printf("Listening on %s", *tcpServerAddress)
 	}
+	log.Printf("Queue length is %d", *queueLength)
+	log.Printf("Rate limit is %d/min", *rateLimit)
 }
 
 func main() {
