@@ -10,6 +10,8 @@ type Queue struct {
 	address      string
 	name         string
 	messageQueue chan []byte
+	conn         *beanstalk.Conn
+	tubes        *beanstalk.TubeSet
 }
 
 func New(address, queueName string, messageQueue chan []byte) *Queue {
@@ -17,45 +19,56 @@ func New(address, queueName string, messageQueue chan []byte) *Queue {
 		address,
 		queueName,
 		messageQueue,
+		nil,
+		nil,
 	}
 	go q.run()
 	return q
 }
 
-func (q *Queue) connect() *beanstalk.Conn {
+func (q *Queue) connect() {
 	for {
-		conn, err := beanstalk.Dial("tcp", q.address)
+		var err error
+		q.conn, err = beanstalk.Dial("tcp", q.address)
 		if err != nil {
 			log.Printf("Could not connect to queue server %s: %v", q.address, err)
-			time.Sleep(1 * time.Second)
+			time.Sleep(5 * time.Second)
 			continue
 		}
 		log.Printf("Connected to queue server at %s", q.address)
-		return conn
+		return
 	}
+}
+
+func (q *Queue) subscribe() {
+	q.tubes = &beanstalk.TubeSet{q.conn, make(map[string]bool)}
+	q.tubes.Name["default"] = false
+	q.tubes.Name[q.name] = true
 }
 
 func (q *Queue) run() {
 	log.Print("Starting beanstalkd queue watcher")
-	var Queue *beanstalk.Conn
-	Queue = q.connect()
-	defer Queue.Close()
-	tube := &beanstalk.TubeSet{Queue, make(map[string]bool)}
-	tube.Name["default"] = false
-	tube.Name[q.name] = true
+	q.connect()
+	defer func() {
+		q.conn.Close()
+	}()
+	q.subscribe()
 	for {
-		id, body, err := tube.Reserve(10)
+		id, body, err := q.tubes.Reserve(1)
 		if err == nil {
-			Queue.Delete(id)
+			q.conn.Delete(id)
 			// Silently discard messages if chan is full
 			if len(q.messageQueue) < cap(q.messageQueue) {
 				q.messageQueue <- body
 			}
 		} else if err.Error() != "reserve-with-timeout: timeout" {
 			log.Printf("Reconnecting to queue server due to %v", err)
-			Queue.Close()
+			q.conn.Close()
 			time.Sleep(5 * time.Second)
-			Queue = q.connect()
+			q.connect()
+			q.subscribe()
+		} else {
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 }
