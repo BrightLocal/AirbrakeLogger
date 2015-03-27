@@ -44,7 +44,8 @@ func (s *Sender) send(xml []byte) {
 	var msg string
 	err := json.Unmarshal(xml, &msg)
 	if err != nil {
-		log.Printf("%s", err)
+		log.Printf("Error parsing xml: %s", err)
+		log.Printf("Erroneous payload: %s", xml)
 		return
 	}
 	resp, err := http.Post(s.url, "text/xml", bytes.NewBuffer([]byte(msg)))
